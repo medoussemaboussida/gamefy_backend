@@ -1,0 +1,108 @@
+version: '3.8'
+
+# 1. Define the custom network
+networks:
+  gamefy-network:
+    driver: bridge
+    name: gamefy-network  # Explicit name for easier external access
+
+services:
+# /home/ubuntu/gamefy/frontend/Gamefy
+  nginx:
+    # image: gamefy-frontend:v4
+    build:
+      context: ../../gamefy/frontend/Gamefy  # Adjusted path
+      dockerfile: Dockerfile
+      args:
+        - VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${FIREBASE_APP_ID}
+  
+    container_name: gamefy-frontend
+    environment:
+      - VITE_FIREBASE_API_KEY=AIzaSyAzlEhQSpc2eMTLH2RB6qY3vzo3FhvChx4
+      - VITE_FIREBASE_AUTH_DOMAIN=gamefy-backend.firebaseapp.com
+      - VITE_FIREBASE_PROJECT_ID=gamefy-backend
+      - VITE_FIREBASE_STORAGE_BUCKET=gamefy-backend.appspot.com
+      - VITE_FIREBASE_MESSAGING_SENDER_ID=538701166703
+      - VITE_FIREBASE_APP_ID=1:538701166703:web:c0c1b766397a350391759a
+    env_file:
+      - ~/gamefy/frontend/Gamefy/.env.firebase
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # - ./frontend/dist:/usr/share/nginx/html
+      # - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/ssl:/etc/ssl:ro
+    networks:
+      - gamefy-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 1G
+
+
+  backend:
+    container_name: gamefy-backend
+    image: gamefy-backend:v4
+    # build: .
+    # ports:
+    #   - "8080:8080"
+    networks:
+      - gamefy-network
+    environment:
+      - CORS_ALLOWED_ORIGINS=https://gamefy.tn,http://gamefy.tn
+      - MONGODB_URI=mongodb://gamefy:${MONGO_PASSWORD}@mongodb:27017/gamefy?authSource=admin
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: gamefy
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+      - ./backups:/backups
+    # ports:
+    #   - "27017:27017"
+    networks:
+      - gamefy-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
+
+volumes:
+  mongodb_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/lib/gamefy/mongodb
+      o: bind

@@ -1,0 +1,20 @@
+package com.turki.gamefyback.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import javax.annotation.PostConstruct;
+import java.util.TimeZone;
+
+@Configuration
+public class TimezoneConfig implements WebMvcConfigurer {
+
+    @PostConstruct
+    public void init() {
+        // Set default timezone to UTC for consistent handling
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        
+        // Or use Africa/Tunis if you want all date operations to use Tunis time
+        // TimeZone.setDefault(TimeZone.getTimeZone("Africa/Tunis"));
+    }
+}
